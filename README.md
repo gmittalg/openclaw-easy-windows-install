@@ -283,7 +283,74 @@ GH_TOKEN=<your_token> npx electron-builder --win --publish always
 
 ---
 
-## Project layout decisions
+## The accessibility problem we spent a long time solving
+
+Getting OpenClaw onto a non-developer Windows machine turned out to be a genuinely hard problem. Here is an honest account of the thinking that went into each decision.
+
+---
+
+### Constraint 1 — Zero prerequisites
+
+The first question we asked was: *what can we assume the user has installed?*
+
+The answer we kept coming back to was: **nothing**. Not Node.js, not pnpm, not Visual C++ redistributables, not Git. Windows ships with essentially no developer tooling and the people we are trying to reach have no reason to install any of it.
+
+That single constraint ruled out every approach that delegates any part of the setup to the user:
+- "Download Node.js first" — ruled out
+- "Run `npm install` in a terminal" — ruled out
+- "Compile native modules during install" — ruled out
+
+The solution was to pre-compile everything on the build machine and ship the result. The installer contains a complete, ready-to-run copy of Node.js and every native module already compiled for Windows x64. The user's machine is treated as a **runtime-only** target.
+
+---
+
+### Constraint 2 — No admin rights
+
+A meaningful fraction of the people this is aimed at — employees, students, people using shared family computers — do not have administrator access on their machine. Any installer that required elevation would exclude them.
+
+We considered Windows Services (they require `SYSTEM`-level installation, i.e. admin), auto-start via the registry `HKLM\...\Run` key (also requires admin for machine-wide), and scheduled tasks (admin for system-wide tasks).
+
+The solution was to lean entirely on the **per-user install model**:
+- NSIS installs to `%LOCALAPPDATA%\Programs\OpenClaw` — no elevation, no UAC prompt
+- Auto-start is registered under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` — the user's own registry hive
+- Config lives in `%APPDATA%\openclaw\` — fully within the user's profile
+
+No administrator interaction required at any stage.
+
+---
+
+### Constraint 3 — The configuration cliff
+
+The original OpenClaw setup asks users to edit a `.env` file and a JSON config file. That is a cliff for non-technical users. The mental model of "a file with KEY=VALUE pairs" is not obvious to someone who has never opened a terminal, and the error feedback is zero — get it wrong and nothing happens.
+
+We designed a guided wizard instead:
+- **One question at a time** — provider first, then key, then channels, then tokens
+- **Only ask for what is needed** — token fields for disabled channels are never shown
+- **Validate before proceeding** — the installer calls the provider's API with the entered key and refuses to advance if the key is wrong, showing a clear error in plain language
+
+This turns a silent misconfiguration into an immediate, unambiguous prompt to fix it. The user arrives at a working install, not a broken one they have to debug.
+
+---
+
+### Constraint 4 — Staying current without user action
+
+Security patches and new features in OpenClaw should reach users automatically. A non-technical user cannot be expected to check GitHub, download a new installer, and re-run setup.
+
+We integrated **electron-updater** with GitHub Releases from the start. On each launch, the app silently checks whether a newer release exists. If it does, the user gets a single dialog: "An update is ready — restart now?" One click. No manual download, no re-running the wizard, no re-entering API keys.
+
+The update is differential (only the changed files are downloaded) thanks to the `.blockmap` file published alongside each release, so even users on slow connections are not penalised.
+
+---
+
+### Constraint 5 — Changing your mind after install
+
+Initial setup is a snapshot. API keys expire. Bots get added. Ports conflict. The original OpenClaw expects you to edit files to handle this. We wanted something better.
+
+The **Settings window** (tray → Settings) lets users update every configuration value through a UI — API keys with show/hide toggles, channel enable/disable switches, bot token fields, gateway port — without ever touching a file. After saving, a banner offers a one-click gateway restart. The in-app settings panel does for post-install what the wizard did for first-run: it makes the right path the easy path.
+
+---
+
+### The decisions that followed from these constraints
 
 **Why not bundle the OpenClaw source and run `pnpm install` during setup?**
 Native modules (sharp, sqlite-vec) must be compiled for the exact Node.js ABI version. Pre-compiling on the build machine and shipping the binaries is the only reliable way to guarantee users never hit a build-tools error.
