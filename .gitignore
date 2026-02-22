@@ -1,2 +1,11 @@
-/dist-electron
-/dist
+node_modules/
+dist/
+dist-electron/
+node-dist/
+gateway-deploy/
+*.log
+.cache/
+.env
+*.env
+Thumbs.db
+.DS_Store
