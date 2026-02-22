@@ -9,7 +9,7 @@ import https from "https";
 const token = process.argv[2];
 if (!token) { console.error("Usage: node update-release-notes.mjs <token>"); process.exit(1); }
 
-const RELEASE_ID = 289184302;
+const RELEASE_ID = 289210146;
 
 const releaseBody = `## OpenClaw for Windows — First Public Release
 
@@ -99,6 +99,8 @@ See [README.md](https://github.com/gmittalg/openclaw-easy-windows-install#the-ac
 const payload = JSON.stringify({
   name: "OpenClaw for Windows — v2026.2.20",
   body: releaseBody,
+  draft: false,
+  prerelease: false,
 });
 
 const options = {
