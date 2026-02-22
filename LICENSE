@@ -1,21 +1,98 @@
-MIT License
+Copyright (c) 2026 gmittalg (https://github.com/gmittalg)
 
-Copyright (c) 2026 Gaurav Mittal
+SHARED-PROFIT LICENSE v1.0
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+TERMS AND CONDITIONS
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. DEFINITIONS
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+   "Software" means the source code, binaries, scripts, configuration files,
+   and all other files in this repository.
+
+   "Non-Commercial Use" means use of the Software solely for personal,
+   educational, research, charitable, or other purposes where no revenue,
+   compensation, or financial benefit of any kind is directly or indirectly
+   derived from the use of the Software.
+
+   "Commercial Use" means any use of the Software — including deployment,
+   distribution, integration, or incorporation into a product or service —
+   where revenue, compensation, or financial benefit of any kind is directly
+   or indirectly derived.
+
+   "Gross Revenue" means all revenue attributable to a product or service
+   that incorporates, is powered by, or is materially enabled by the Software,
+   before deduction of expenses.
+
+2. GRANT OF LICENSE — NON-COMMERCIAL USE
+
+   Permission is hereby granted, free of charge, to any person obtaining a
+   copy of this Software, to use, copy, modify, merge, publish, and distribute
+   the Software for Non-Commercial Use only, subject to the following
+   conditions:
+
+   a. The above copyright notice and this license must be included in all
+      copies or substantial portions of the Software.
+
+   b. Modified versions must be clearly marked as such and must not be
+      misrepresented as the original Software.
+
+3. COMMERCIAL USE — PROFIT SHARING REQUIREMENT
+
+   Commercial Use of this Software is permitted subject to the following
+   mandatory profit-sharing obligation:
+
+   a. You must pay to the copyright holder a royalty equal to 10% (ten
+      percent) of Gross Revenue attributable to the Commercial Use of the
+      Software, payable quarterly within 30 days of the end of each calendar
+      quarter.
+
+   b. Before commencing Commercial Use, you must notify the copyright holder
+      in writing (via the contact information below or a GitHub issue) of your
+      intended use.
+
+   c. You must keep accurate records of Gross Revenue and provide an annual
+      summary to the copyright holder upon request.
+
+   d. Failure to comply with the profit-sharing obligation constitutes a
+      material breach of this license and immediately terminates your right
+      to use the Software.
+
+4. RESTRICTIONS
+
+   You may not:
+
+   a. Sublicense the Software under different terms that circumvent the
+      profit-sharing obligation in Section 3.
+
+   b. Remove or alter any copyright notices, this license, or attributions
+      contained in the Software.
+
+5. ATTRIBUTION
+
+   Any product or service making Commercial Use of this Software must include
+   a visible acknowledgement in its documentation or user interface:
+
+       "Powered by openclaw-easy-windows-install
+        (https://github.com/gmittalg/openclaw-easy-windows-install)"
+
+6. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL
+   THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF,
+   OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+7. GOVERNING LAW
+
+   This license shall be governed by and construed in accordance with
+   applicable law. Any disputes shall be resolved in the jurisdiction of the
+   copyright holder's residence.
+
+---
+
+Contact for Commercial Use inquiries:
+  GitHub: https://github.com/gmittalg
+  Repository: https://github.com/gmittalg/openclaw-easy-windows-install
