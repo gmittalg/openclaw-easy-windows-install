@@ -53,7 +53,7 @@ Function WriteOpenClawConfig
   ; -------------------------------------------------------------------------
   FileOpen $0 "$APPDATA\openclaw\openclaw.json" w
   FileWrite $0 "{$\r$\n"
-  FileWrite $0 '  "gateway": { "mode": "local", "port": 18789, "bind": "loopback", "auth": { "mode": "none" } },$\r$\n'
+  FileWrite $0 '  "gateway": { "mode": "local", "port": 18789, "bind": "loopback", "auth": { "mode": "token", "token": "oc-desktop-v1" } },$\r$\n'
   FileWrite $0 '  "channels": {$\r$\n'
 
   ; Build channels JSON — track whether we need a comma separator

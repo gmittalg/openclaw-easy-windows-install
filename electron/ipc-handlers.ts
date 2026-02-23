@@ -38,11 +38,23 @@ export function registerIpcHandlers(
     return shell.openPath(resolved);
   });
 
+  ipcMain.handle("gateway:get-logs", () => {
+    return gatewayManager.getLogs();
+  });
+
   // Forward gateway status changes to renderer
   gatewayManager.onStatusChange((status) => {
     const win = getWindow();
     if (win && !win.isDestroyed()) {
       win.webContents.send("gateway:status-changed", status);
+    }
+  });
+
+  // Forward gateway log lines to renderer
+  gatewayManager.onLog((entry) => {
+    const win = getWindow();
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("gateway:log", entry);
     }
   });
 }

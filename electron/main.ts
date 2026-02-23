@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, shell, session } from "electron";
 import path from "path";
 import { GatewayManager } from "./gateway-manager";
 import { TrayManager } from "./tray-manager";
@@ -9,6 +9,19 @@ import { initAutoUpdater } from "./updater";
 
 const GATEWAY_PORT = 18789;
 const GATEWAY_URL = `http://127.0.0.1:${GATEWAY_PORT}/`;
+
+/** Inject the gateway auth token into every request (HTTP + WebSocket) from the renderer. */
+function injectGatewayToken(token: string): void {
+  const filter = { urls: [`http://127.0.0.1:${GATEWAY_PORT}/*`, `ws://127.0.0.1:${GATEWAY_PORT}/*`] };
+  session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+    callback({
+      requestHeaders: {
+        ...details.requestHeaders,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  });
+}
 
 let mainWindow: BrowserWindow | null = null;
 let gatewayManager: GatewayManager | null = null;
@@ -73,12 +86,17 @@ function createWindow(): BrowserWindow {
 async function loadGatewayUI(): Promise<void> {
   if (!mainWindow || !gatewayManager) return;
 
-  mainWindow.loadURL("about:blank");
+  mainWindow.loadFile(path.join(__dirname, "loading.html"));
 
   try {
     await gatewayManager.waitForReady();
     if (mainWindow && !mainWindow.isDestroyed()) {
       const token = gatewayManager.getToken();
+      if (token) {
+        // Inject the token into every HTTP + WebSocket request to the gateway so
+        // the SPA doesn't need to manage it manually for API calls or WS upgrades.
+        injectGatewayToken(token);
+      }
       const url = token
         ? `${GATEWAY_URL}?token=${encodeURIComponent(token)}`
         : GATEWAY_URL;
@@ -87,12 +105,14 @@ async function loadGatewayUI(): Promise<void> {
   } catch (err) {
     console.error("[main] Gateway did not become ready:", err);
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.loadURL(
-        `data:text/html,<html><body style="font-family:sans-serif;padding:2rem;background:#1a1a2e;color:#fff">` +
-          `<h2>OpenClaw Gateway Error</h2>` +
-          `<p>The gateway failed to start. Check application logs or use Restart Gateway from the system tray.</p>` +
+      const body = encodeURIComponent(
+        `<!DOCTYPE html><html><body style="font-family:sans-serif;padding:2rem;background:#1a1a2e;color:#e0e0e0">` +
+          `<h2 style="color:#fc8181">OpenClaw Gateway Error</h2>` +
+          `<p>The gateway failed to start within the expected time.</p>` +
+          `<p style="color:#a0aec0;font-size:0.9rem">Use <b>Restart Gateway</b> from the system tray icon to try again.</p>` +
           `</body></html>`,
       );
+      mainWindow.loadURL(`data:text/html;charset=utf-8,${body}`);
     }
   }
 }

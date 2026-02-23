@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'" />
+  <title>OpenClaw — Starting</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .logo {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #7f9cf5;
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.05em;
+    }
+
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid rgba(127, 156, 245, 0.2);
+      border-top-color: #7f9cf5;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 1.2rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #status-msg {
+      font-size: 1rem;
+      color: #a0aec0;
+      margin-bottom: 1.5rem;
+    }
+
+    #status-msg.error { color: #fc8181; }
+
+    .logs-toggle {
+      background: none;
+      border: 1px solid #4a5568;
+      color: #a0aec0;
+      padding: 0.3rem 0.9rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      margin-bottom: 0.75rem;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .logs-toggle:hover { border-color: #7f9cf5; color: #7f9cf5; }
+
+    #log-container {
+      display: none;
+      width: 780px;
+      max-width: 92vw;
+      background: #0d0d1a;
+      border: 1px solid #2d3748;
+      border-radius: 6px;
+      padding: 0.5rem 0;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    #log-container.visible { display: block; }
+
+    .log-line {
+      font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+      font-size: 0.72rem;
+      line-height: 1.6;
+      padding: 0 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #8a9db5;
+    }
+
+    .log-line.stderr { color: #f6a6a6; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div class="logo">OpenClaw</div>
+  <div class="spinner"></div>
+  <div id="status-msg">OpenClaw gateway is coming up&hellip;, please wait!!</div>
+  <button class="logs-toggle" id="logs-toggle">Show logs &#9660;</button>
+  <div id="log-container"></div>
+
+  <script>
+    const logContainer = document.getElementById('log-container');
+    const logsToggle   = document.getElementById('logs-toggle');
+    const statusMsg    = document.getElementById('status-msg');
+    let logsVisible = false;
+    let autoScroll  = true;
+
+    logsToggle.addEventListener('click', () => {
+      logsVisible = !logsVisible;
+      logContainer.classList.toggle('visible', logsVisible);
+      logsToggle.innerHTML = logsVisible ? 'Hide logs &#9650;' : 'Show logs &#9660;';
+    });
+
+    logContainer.addEventListener('scroll', () => {
+      autoScroll = logContainer.scrollTop + logContainer.clientHeight >= logContainer.scrollHeight - 20;
+    });
+
+    function appendLog(line, isStderr) {
+      const div = document.createElement('div');
+      div.className = 'log-line' + (isStderr ? ' stderr' : '');
+      div.textContent = line;
+      logContainer.appendChild(div);
+      if (autoScroll) {
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }
+    }
+
+    async function init() {
+      if (!window.openclaw) return;
+
+      // Load buffered log lines captured before this page opened
+      try {
+        const buffered = await window.openclaw.getLogs();
+        for (const entry of buffered) {
+          appendLog(entry.line, entry.isStderr);
+        }
+        if (autoScroll) logContainer.scrollTop = logContainer.scrollHeight;
+      } catch (_) {}
+
+      // Subscribe to new log lines in real time
+      window.openclaw.onLog((entry) => {
+        appendLog(entry.line, entry.isStderr);
+      });
+
+      // Reflect gateway status changes in the message
+      window.openclaw.onGatewayStatusChange((status) => {
+        if (status === 'starting') {
+          statusMsg.textContent = 'OpenClaw gateway is coming up\u2026, please wait!!';
+          statusMsg.className = '';
+        } else if (status === 'error') {
+          statusMsg.textContent = 'Gateway encountered an error \u2014 retrying\u2026';
+          statusMsg.className = 'error';
+        }
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

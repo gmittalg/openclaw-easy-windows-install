@@ -28,4 +28,17 @@ contextBridge.exposeInMainWorld("openclaw", {
 
   openItem: (itemPath: string): Promise<string> =>
     ipcRenderer.invoke("shell:openItem", itemPath),
+
+  getLogs: (): Promise<Array<{ line: string; isStderr: boolean }>> =>
+    ipcRenderer.invoke("gateway:get-logs"),
+
+  onLog: (callback: (entry: { line: string; isStderr: boolean }) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, entry: { line: string; isStderr: boolean }): void => {
+      callback(entry);
+    };
+    ipcRenderer.on("gateway:log", listener);
+    return () => {
+      ipcRenderer.removeListener("gateway:log", listener);
+    };
+  },
 });

@@ -5,8 +5,10 @@ import fs from "fs";
 import os from "os";
 
 const GATEWAY_PORT = 18789;
-const HEALTH_CHECK_URL = `http://127.0.0.1:${GATEWAY_PORT}/`;
-const HEALTH_CHECK_TIMEOUT_MS = 60_000;
+// Health check URL — any HTTP response means the gateway is listening.
+const HEALTH_CHECK_URL = `http://127.0.0.1:${GATEWAY_PORT}/__openclaw/control-ui-config.json`;
+// Give the gateway up to 5 minutes to start (it does substantial async init).
+const HEALTH_CHECK_TIMEOUT_MS = 300_000;
 const HEALTH_CHECK_INTERVAL_MS = 500;
 
 const MIN_RESTART_DELAY_MS = 1_000;
@@ -14,12 +16,21 @@ const MAX_RESTART_DELAY_MS = 30_000;
 
 export type GatewayStatus = "stopped" | "starting" | "running" | "error";
 
+export interface LogEntry {
+  line: string;
+  isStderr: boolean;
+}
+
+const MAX_LOG_LINES = 500;
+
 export class GatewayManager {
   private process: ChildProcess | null = null;
   private shuttingDown = false;
   private restartDelay = MIN_RESTART_DELAY_MS;
   private status: GatewayStatus = "stopped";
   private statusListeners: Array<(s: GatewayStatus) => void> = [];
+  private logBuffer: LogEntry[] = [];
+  private logListeners: Array<(entry: LogEntry) => void> = [];
 
   constructor(private readonly resourcesPath: string) {}
 
@@ -44,6 +55,25 @@ export class GatewayManager {
 
   onStatusChange(listener: (s: GatewayStatus) => void): void {
     this.statusListeners.push(listener);
+  }
+
+  private emitLog(line: string, isStderr: boolean): void {
+    const entry: LogEntry = { line, isStderr };
+    this.logBuffer.push(entry);
+    if (this.logBuffer.length > MAX_LOG_LINES) {
+      this.logBuffer.shift();
+    }
+    for (const listener of this.logListeners) {
+      listener(entry);
+    }
+  }
+
+  getLogs(): LogEntry[] {
+    return [...this.logBuffer];
+  }
+
+  onLog(listener: (entry: LogEntry) => void): void {
+    this.logListeners.push(listener);
   }
 
   getStatus(): GatewayStatus {
@@ -89,6 +119,9 @@ export class GatewayManager {
     console.log(`[GatewayManager] Spawning: ${this.nodeBin} ${this.gatewayScript} gateway`);
 
     this.process = spawn(this.nodeBin, [this.gatewayScript, "gateway"], {
+      // Set cwd to the gateway directory so resolveControlUiRootSync can
+      // reliably locate the control-ui assets relative to the entry script.
+      cwd: path.dirname(this.gatewayScript),
       env,
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
@@ -96,10 +129,16 @@ export class GatewayManager {
 
     this.process.stdout?.on("data", (chunk: Buffer) => {
       process.stdout.write(`[gateway] ${chunk}`);
+      for (const line of chunk.toString().split("\n")) {
+        if (line.trim()) this.emitLog(line, false);
+      }
     });
 
     this.process.stderr?.on("data", (chunk: Buffer) => {
       process.stderr.write(`[gateway] ${chunk}`);
+      for (const line of chunk.toString().split("\n")) {
+        if (line.trim()) this.emitLog(line, true);
+      }
     });
 
     this.process.on("exit", (code, signal) => {
@@ -128,23 +167,69 @@ export class GatewayManager {
   }
 
   async waitForReady(): Promise<void> {
-    const start = Date.now();
-    while (Date.now() - start < HEALTH_CHECK_TIMEOUT_MS) {
-      const ok = await this.checkHealth();
-      if (ok) {
+    return new Promise<void>((resolve, reject) => {
+      let resolved = false;
+
+      const done = () => {
+        if (resolved) return false;
+        resolved = true;
+        return true;
+      };
+
+      const markReady = () => {
+        if (!done()) return;
+        clearInterval(pollInterval);
+        clearTimeout(timeoutHandle);
+        this.logListeners = this.logListeners.filter((l) => l !== logWatcher);
         this.restartDelay = MIN_RESTART_DELAY_MS;
         this.setStatus("running");
-        return;
+        resolve();
+      };
+
+      // Primary: watch for "listening on" in gateway log output — fires the instant
+      // the HTTP server starts, without waiting for the next poll cycle.
+      const logWatcher = (entry: LogEntry) => {
+        if (entry.line.includes("listening on")) {
+          markReady();
+        }
+      };
+      this.logListeners.push(logWatcher);
+
+      // Check already-buffered log lines in case we missed the message.
+      for (const entry of this.logBuffer) {
+        if (entry.line.includes("listening on")) {
+          markReady();
+          return;
+        }
       }
-      await sleep(HEALTH_CHECK_INTERVAL_MS);
-    }
-    throw new Error(`Gateway did not become healthy within ${HEALTH_CHECK_TIMEOUT_MS}ms`);
+
+      // Fallback: HTTP health check polling — accepts any HTTP response (any status
+      // code means the server is listening, even if it returns 404/503).
+      const pollInterval = setInterval(() => {
+        if (resolved) {
+          clearInterval(pollInterval);
+          return;
+        }
+        this.checkHealth().then((ok) => {
+          if (ok) markReady();
+        }).catch(() => {/* ignore */});
+      }, HEALTH_CHECK_INTERVAL_MS);
+
+      // Give up after HEALTH_CHECK_TIMEOUT_MS.
+      const timeoutHandle = setTimeout(() => {
+        if (!done()) return;
+        clearInterval(pollInterval);
+        this.logListeners = this.logListeners.filter((l) => l !== logWatcher);
+        reject(new Error(`Gateway did not become healthy within ${HEALTH_CHECK_TIMEOUT_MS / 1000}s`));
+      }, HEALTH_CHECK_TIMEOUT_MS);
+    });
   }
 
   private checkHealth(): Promise<boolean> {
     return new Promise((resolve) => {
       const req = http.get(HEALTH_CHECK_URL, { timeout: 2000 }, (res) => {
-        resolve(res.statusCode === 200);
+        // Any HTTP response (regardless of status code) means the server is listening.
+        resolve(true);
         res.resume();
       });
       req.on("error", () => resolve(false));
